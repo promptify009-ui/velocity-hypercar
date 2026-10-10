@@ -1,7 +1,7 @@
 """Idempotent seed data. Run manually with `python -m app.db.seed`.
 
-Only cars that have a real 3D model are served. To add a car: add it to CARS (+ its ENGINES/PACKAGES/AEROS),
-drop `<slug>.glb` into assets/models/, and re-run the seed. Cars not listed in CARS are deactivated automatically."""
+Cars in CARS are served even when their model is a placeholder; missing GLBs use the named frontend fallback.
+To add a model, drop `<slug>.glb` into assets/models/ and re-run the seed. Unlisted cars are deactivated automatically."""
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ CARS = [
         handling=98,
         braking=97,
         image_url="/assets/porsche-911-gt3-rs.png",
+        model_url="/assets/models/porsche-911-gt3-rs.glb",
         description="Uncompromising track-bred sports car with naturally aspirated flat-six power, central radiator concept, and extreme active aerodynamics.",
     ),
     dict(
@@ -34,7 +35,21 @@ CARS = [
         handling=72,
         braking=70,
         image_url="/assets/suzuki-swift.png",
+        model_url="/assets/models/suzuki-swift.glb",
         description="Light, nimble Japanese hatchback with a 1.2L three-cylinder petrol engine, efficient packaging and agile city handling.",
+    ),
+    dict(
+        name="Apex F1-GT",
+        slug="apex-f1gt",
+        base_price=125_000_000,
+        horsepower=980,
+        top_speed=360,
+        acceleration=2.4,
+        handling=99,
+        braking=98,
+        image_url="/assets/thumbnails/apex-f1gt.png",
+        model_url="/assets/models/apex-f1gt.glb",
+        description="A street-legal hypercar heavily inspired by current Formula 1 aerodynamics and material science.",
     ),
 ]
 
@@ -68,6 +83,13 @@ PAINTS = [
         hex_code="#39FF14",
         price_modifier=300_000,
         category="special",
+    ),
+    dict(
+        car_slug="apex-f1gt",
+        name="Apex Satin Graphite",
+        hex_code="#555b5c",
+        price_modifier=450_000,
+        category="satin metallic",
     ),
 ]
 
@@ -221,6 +243,17 @@ ENGINES = [
         handling_modifier=0,
         braking_modifier=0,
     ),
+    dict(
+        car_slug="apex-f1gt",
+        name="2.4L V6 Hybrid ERS",
+        description="High-revving V6 paired with an energy recovery system for sustained electrical boost.",
+        price_modifier=4_500_000,
+        horsepower_modifier=180,
+        top_speed_modifier=24,
+        acceleration_modifier=-0.3,
+        handling_modifier=1,
+        braking_modifier=0,
+    ),
 ]
 
 PACKAGES = [
@@ -268,6 +301,28 @@ PACKAGES = [
         handling_modifier=6,
         braking_modifier=4,
     ),
+    dict(
+        car_slug="apex-f1gt",
+        name="Apex F1-Track Performance Pack",
+        description="Track calibration, active chassis control and qualifying-mode energy deployment.",
+        price_modifier=3_200_000,
+        horsepower_modifier=90,
+        top_speed_modifier=12,
+        acceleration_modifier=-0.2,
+        handling_modifier=4,
+        braking_modifier=3,
+    ),
+    dict(
+        car_slug="apex-f1gt",
+        name="Carbon-Ceramic Brake System",
+        description="Lightweight carbon-ceramic rotors with endurance-grade cooling ducts.",
+        price_modifier=1_400_000,
+        horsepower_modifier=0,
+        top_speed_modifier=0,
+        acceleration_modifier=0.0,
+        handling_modifier=0,
+        braking_modifier=8,
+    ),
 ]
 
 AEROS = [
@@ -311,11 +366,21 @@ AEROS = [
         handling_modifier=2,
         top_speed_modifier=-1,
     ),
+    dict(
+        car_slug="apex-f1gt",
+        name="Apex Ground-Effect Aero Package",
+        description="Full-width venturi tunnels and adjustable carbon-fiber ground-effect elements.",
+        price_modifier=2_800_000,
+        downforce=48,
+        drag=12,
+        handling_modifier=7,
+        top_speed_modifier=-5,
+    ),
 ]
 
 
 def _ensure_schema(db: Session) -> None:
-    """Ensure car_id column exists on option tables if running on an existing SQLite DB."""
+    """Add compatibility columns when running against an existing SQLite database."""
     tables = [
         "paints", "wheels", "calipers", "interior_materials",
         "interior_colors", "seat_types", "engines", "performance_packages", "aero_packages",
@@ -329,6 +394,14 @@ def _ensure_schema(db: Session) -> None:
                 db.commit()
         except Exception:
             pass
+    try:
+        res = db.execute(text("PRAGMA table_info(cars)")).fetchall()
+        columns = [r[1] for r in res]
+        if columns and "model_url" not in columns:
+            db.execute(text("ALTER TABLE cars ADD COLUMN model_url VARCHAR(255) NOT NULL DEFAULT ''"))
+            db.commit()
+    except Exception:
+        pass
 
 
 def _cleanup_fictional_data(db: Session) -> None:
@@ -391,6 +464,12 @@ def seed_database(db: Session) -> int:
     total = 0
     total += _seed_table(db, Car, CARS, key="slug")
     db.flush()
+    for car_data in CARS:
+        car = db.scalar(select(Car).where(Car.slug == car_data["slug"]))
+        if car:
+            for field, value in car_data.items():
+                if getattr(car, field) != value:
+                    setattr(car, field, value)
     _sync_active_cars(db)
 
     car_slug_to_id = {c.slug: c.id for c in db.scalars(select(Car)).all()}
@@ -406,7 +485,7 @@ def seed_database(db: Session) -> int:
         return prepared
 
     for model, rows in (
-        (Paint, PAINTS),
+        (Paint, _prepare_rows(PAINTS)),
         (Wheel, WHEELS),
         (Caliper, CALIPERS),
         (InteriorMaterial, MATERIALS),

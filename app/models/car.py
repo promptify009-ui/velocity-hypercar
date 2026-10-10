@@ -20,6 +20,7 @@ class Car(Base):
     handling: Mapped[int] = mapped_column(Integer, nullable=False)  # 0-100
     braking: Mapped[int] = mapped_column(Integer, nullable=False)  # 0-100
     image_url: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    model_url: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False

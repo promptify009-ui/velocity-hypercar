@@ -1,5 +1,5 @@
 // Single place that knows the backend URL, auth token and error shape.
-export const API_BASE_URL=(import.meta.env.VITE_API_BASE_URL||'http://127.0.0.1:8000').replace(/\/+$/,'');
+export const API_BASE_URL=(import.meta.env.VITE_API_BASE_URL||'').replace(/\/+$/,'');
 const TOKEN_KEY='vx_token';
 export const tokenStore={
 get:()=>{try{return localStorage.getItem(TOKEN_KEY)}catch{return null}},
@@ -19,7 +19,7 @@ const headers={Accept:'application/json'};if(body!==undefined)headers['Content-T
 const t=tokenStore.get();if(auth&&t)headers.Authorization='Bearer '+t;
 let res;try{res=await fetch(API_BASE_URL+path,{method,headers,body:body!==undefined?JSON.stringify(body):undefined})}
 catch{throw new ApiError(0,'Cannot reach the Velocity server. Check your connection and try again.')}
-let data=null;if(res.status!==204){const txt=await res.text();try{data=txt?JSON.parse(txt):null}catch{data=null}}
+let data=null;if(res.status!==204){let txt;try{txt=await res.text()}catch{throw new ApiError(0,'Cannot reach the Velocity server. Check your connection and try again.')}try{data=txt?JSON.parse(txt):null}catch{data=null}}
 if(!res.ok)throw new ApiError(res.status,messageFrom(res.status,data),data);
 return data}
 

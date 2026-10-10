@@ -15,3 +15,4 @@ class CarOut(BaseModel):
     handling: int
     braking: int
     image_url: str
+    model_url: str

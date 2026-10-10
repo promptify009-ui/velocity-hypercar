@@ -106,7 +106,7 @@ Status codes: 400 invalid selection / malformed Build ID, 401 not authenticated,
 - Calculation rules: price = car base + sum of all nine option modifiers (integer INR). Stats = car stats + engine + performance package (+ aero for handling/top speed). Acceleration floor 1.0 s; handling and braking clamped to 0–100. Wheel `performance_modifier` is stored but not applied.
 
 ## Seed Data
-6 vehicles (GLC 300e, Porsche 911 GT3 RS, Lamborghini Huracán Tecnica, EQS 580, Ferrari 296 GTB, Mazda 3), 5 paints, 4 wheels, 4 calipers, 3 interior materials, 4 interior colours, 3 seat types, 12 vehicle-specific powertrain options, 12 vehicle packages, 12 vehicle aero packages.
+3 active vehicles (Porsche 911 GT3 RS, Suzuki Swift, Apex F1-GT), 6 paints, 4 wheels, 4 calipers, 3 interior materials, 4 interior colours, 3 seat types, 5 vehicle-specific powertrains, 6 performance packages, and 5 aero packages. Apex F1-GT's `model_url` and thumbnail path are placeholders until its GLB and PNG assets are supplied.
 
 ## Example Requests
 ```
